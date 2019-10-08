@@ -1,0 +1,8 @@
+#!/bin/bash
+
+MOUNTED_DEVICE=$(cat /proc/mounts | grep ' / ' | awk '{print $1}')
+STORAGE_DEVICE=$(echo $MOUNTED_DEVICE | sed -Ee 's/p?[0-9]+$//')
+
+TOTAL_SIZE=$(blockdev --getsize64 $STORAGE_DEVICE)
+
+ROOTFS_SIZE=$(expr $TOTAL_SIZE / 4)

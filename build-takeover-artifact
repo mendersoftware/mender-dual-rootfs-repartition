@@ -1,0 +1,56 @@
+#!/bin/bash
+
+PLATFORM=arm
+
+while [ -n "$1" ]; do
+    case "$1" in
+        --arm)
+            PLATFORM=arm
+            ;;
+        --x86_64)
+            PLATFORM=x86_64
+            ;;
+        *)
+            echo "Unrecognized argument: $1" 1>&2
+            exit 1
+            ;;
+    esac
+    shift
+done
+
+set -e -o pipefail
+
+mkdir -p payload
+
+(
+    cd downloads
+
+    if [ $PLATFORM = arm ]; then
+        docker save arm32v7/debian | tar xO --wildcards \*/layer.tar | gzip -c > arm-debian.tar.gz
+        curl -z busybox-arm -o busybox-arm https://www.busybox.net/downloads/binaries/1.26.2-defconfig-multiarch/busybox-armv6l
+    else
+        docker save debian | tar xO --wildcards \*/layer.tar | gzip -c > x86_64-debian.tar.gz
+        curl -z busybox-x86_64 -o busybox-x86_64 https://www.busybox.net/downloads/binaries/1.26.2-defconfig-multiarch/busybox-x86_64
+    fi
+
+    chmod ugo+x busybox-*
+)
+
+(
+    cd payload
+
+    rm -rf takeover.sh
+    mkdir -p takeover.sh
+    # Explicitly use wildcard to omit .git directory.
+    cp ../takeover.sh/* takeover.sh
+    arm-linux-gnueabihf-gcc -static takeover.sh/fakeinit.c -o takeover.sh/fakeinit
+
+    (
+        cd takeover.sh
+
+        cp ../../downloads/busybox-$PLATFORM busybox
+
+        patch -p1 --batch --no-backup-if-mismatch < ../../patches/skip-sshd.patch
+        echo /mender-takeover >> takeover.sh
+    )
+)

@@ -1,0 +1,27 @@
+diff --git a/takeover.sh b/takeover.sh
+index 784b142..e0f6e7d 100755
+--- a/takeover.sh
++++ b/takeover.sh
+@@ -12,10 +12,6 @@ if [ ! -e fakeinit ]; then
+     exit 1
+ fi
+ 
+-./busybox echo "Please set a root password for sshd"
+-
+-./busybox chroot . /bin/passwd
+-
+ ./busybox echo "Setting up target filesystem..."
+ ./busybox rm -f etc/mtab
+ ./busybox ln -s /proc/mounts etc/mtab
+@@ -62,11 +58,6 @@ exec ./busybox chroot . /fakeinit
+ EOF
+ ./busybox chmod +x tmp/${OLD_INIT##*/}
+ 
+-./busybox echo "Starting secondary sshd"
+-
+-./busybox chroot . /usr/bin/ssh-keygen -A
+-./busybox chroot . /usr/sbin/sshd -p $PORT
+-
+ ./busybox echo "You should SSH into the secondary sshd now."
+ ./busybox echo "Type OK to continue"
+ ./busybox echo -n "> "
