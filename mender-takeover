@@ -1,8 +1,44 @@
 #!/bin/bash
 
-MOUNTED_DEVICE=$(cat /proc/mounts | grep ' / ' | awk '{print $1}')
-STORAGE_DEVICE=$(echo $MOUNTED_DEVICE | sed -Ee 's/p?[0-9]+$//')
+set -e
 
-TOTAL_SIZE=$(blockdev --getsize64 $STORAGE_DEVICE)
+WORKDIR="$2"
 
-ROOTFS_SIZE=$(expr $TOTAL_SIZE / 4)
+prepare_takeover() {
+    mkdir -p /takeover
+    mount tmpfs /takeover -t tmpfs
+    cd /takeover
+
+    tar xzf $WORKDIR/debian.tar.gz
+    tar xzf $WORKDIR/takeover.sh.tar.gz
+}
+
+do_takeover() {
+    cd /takeover
+    if [ -n "$(which systemd-run)" ]; then
+        systemd-run bash -c "cd /takeover && exec ./takeover.sh < $(tty) >& $(tty)"
+    else
+        exec ./takeover.sh
+    fi
+}
+
+case "$1" in
+    ArtifactInstall)
+        prepare_takeover
+        ;;
+    NeedsArtifactReboot)
+        echo "Yes"
+        ;;
+    ArtifactReboot)
+        # We need to do most of the work in ArtifactReboot, because it is the
+        # only state where we are allowed to kill the mender daemon, which we
+        # need to do.
+        # TODO REMOVE
+        prepare_takeover
+        do_takeover
+        ;;
+    *)
+        :
+        ;;
+esac
+

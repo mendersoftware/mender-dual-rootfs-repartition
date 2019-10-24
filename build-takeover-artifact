@@ -22,16 +22,29 @@ done
 
 set -e -o pipefail
 
-mkdir -p payload
-
 (
+    mkdir -p downloads
     cd downloads
 
     if [ $PLATFORM = arm ]; then
-        docker save arm32v7/debian | tar xO --wildcards \*/layer.tar | gzip -c > arm-debian.tar.gz
+        rm -rf debian-tmp
+        mkdir -p debian-tmp
+        docker create --name mender-takeover-tmp arm32v7/debian
+        docker cp -a mender-takeover-tmp:/ debian-tmp/
+        docker rm mender-takeover-tmp
+        ( cd debian-tmp && tar --owner=root --group=root -czf ../debian-arm.tar.gz . )
+        rm -rf debian-tmp
+
         curl -z busybox-arm -o busybox-arm https://www.busybox.net/downloads/binaries/1.26.2-defconfig-multiarch/busybox-armv6l
     else
-        docker save debian | tar xO --wildcards \*/layer.tar | gzip -c > x86_64-debian.tar.gz
+        rm -rf debian-tmp
+        mkdir -p debian-tmp
+        docker create --name mender-takeover-tmp debian
+        docker cp -a mender-takeover-tmp:/ debian-tmp/
+        docker rm mender-takeover-tmp
+        ( cd debian-tmp && tar --owner=root --group=root -czf ../debian-x86_64.tar.gz . )
+        rm -rf debian-tmp
+
         curl -z busybox-x86_64 -o busybox-x86_64 https://www.busybox.net/downloads/binaries/1.26.2-defconfig-multiarch/busybox-x86_64
     fi
 
@@ -39,20 +52,52 @@ mkdir -p payload
 )
 
 (
+    rm -rf payload
+    mkdir -p payload
     cd payload
 
-    rm -rf takeover.sh
+    cp ../downloads/debian-$PLATFORM.tar.gz debian.tar.gz
+
     mkdir -p takeover.sh
     # Explicitly use wildcard to omit .git directory.
     cp ../takeover.sh/* takeover.sh
-    arm-linux-gnueabihf-gcc -static takeover.sh/fakeinit.c -o takeover.sh/fakeinit
+
+    if [ $PLATFORM = arm ]; then
+        arm-linux-gnueabihf-gcc -static takeover.sh/fakeinit.c -o takeover.sh/fakeinit
+    else
+        gcc -static takeover.sh/fakeinit.c -o takeover.sh/fakeinit
+    fi
+
+    # Unfortunately minimal Debian installs don't come with mkfs.vfat, so we
+    # need to build the whole image here and include that instead.
+    dd if=/dev/zero of=boot-part.vfat bs=1M seek=16 count=0
+    mkfs.vfat -n Boot boot-part.vfat
+    rm -rf tmp
+    mkdir -p tmp
+    (
+        cd tmp
+        tar xzf ../../downloads/grub-efi-$PLATFORM.tar.gz
+    )
+    mcopy -i boot-part.vfat -s tmp/* ::/
+    rm -rf tmp
+    gzip boot-part.vfat
 
     (
         cd takeover.sh
 
+        mv ../boot-part.vfat.gz .
         cp ../../downloads/busybox-$PLATFORM busybox
 
-        patch -p1 --batch --no-backup-if-mismatch < ../../patches/skip-sshd.patch
-        echo /mender-takeover >> takeover.sh
+        for patch in ../../patches/*.patch; do
+            patch -p1 --batch --no-backup-if-mismatch < $patch
+        done
+        cp ../../mender-takeover.sh .
+        echo 'exec /bin/bash /mender-takeover.sh <$(tty) >$(tty) 2>$(tty)' >> takeover.sh
+
+        tar --owner=root --group=root -czf ../takeover.sh.tar.gz .
     )
+
+    rm -rf takeover.sh
 )
+
+mender-artifact write module-image -T mender-takeover -f payload/debian.tar.gz -f payload/takeover.sh.tar
