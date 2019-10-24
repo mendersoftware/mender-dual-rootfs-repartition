@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 PLATFORM=arm
 
 while [ -n "$1" ]; do
