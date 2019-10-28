@@ -92,7 +92,7 @@ set -e -o pipefail
             patch -p1 --batch --no-backup-if-mismatch < $patch
         done
         cp ../../mender-takeover.sh .
-        echo 'exec /bin/bash /mender-takeover.sh <$(tty) >$(tty) 2>$(tty)' >> takeover.sh
+        echo 'exec /bin/bash /mender-takeover.sh' >> takeover.sh
 
         tar --owner=root --group=root -czf ../takeover.sh.tar.gz .
     )

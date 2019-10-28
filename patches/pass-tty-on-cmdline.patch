@@ -1,0 +1,13 @@
+diff --git a/takeover.sh b/takeover.sh
+index 784b142..5993876 100755
+--- a/takeover.sh
++++ b/takeover.sh
+@@ -33,7 +33,7 @@ if ! ./busybox mount -t devtmpfs dev dev; then
+ fi
+ ./busybox mount -t devpts devpts dev/pts
+ 
+-TTY="$(./busybox tty)"
++TTY="$1"
+ 
+ ./busybox echo "Checking and switching TTY..."
+ 

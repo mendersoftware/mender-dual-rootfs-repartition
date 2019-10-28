@@ -1,0 +1,18 @@
+diff --git a/takeover.sh b/takeover.sh
+index 784b142..3eb65ff 100755
+--- a/takeover.sh
++++ b/takeover.sh
+@@ -39,13 +39,6 @@ TTY="$(./busybox tty)"
+ 
+ exec <"$TO/$TTY" >"$TO/$TTY" 2>"$TO/$TTY"
+ 
+-./busybox echo "Type 'OK' to continue"
+-./busybox echo -n "> "
+-read a
+-if [ "$a" != "OK" ] ; then
+-    exit 1
+-fi
+-
+ ./busybox echo "Preparing init..."
+ ./busybox cat >tmp/${OLD_INIT##*/} <<EOF
+ #!${TO}/busybox sh

@@ -16,7 +16,7 @@ prepare_takeover() {
 do_takeover() {
     cd /takeover
     if [ -n "$(which systemd-run)" ]; then
-        systemd-run bash -c "cd /takeover && exec ./takeover.sh < $(tty) >& $(tty)"
+        systemd-run bash -c "cd /takeover && exec ./takeover.sh $(tty)"
     else
         exec ./takeover.sh
     fi
@@ -26,9 +26,11 @@ case "$1" in
     ArtifactInstall)
         prepare_takeover
         ;;
+
     NeedsArtifactReboot)
         echo "Yes"
         ;;
+
     ArtifactReboot)
         # We need to do most of the work in ArtifactReboot, because it is the
         # only state where we are allowed to kill the mender daemon, which we
@@ -37,6 +39,17 @@ case "$1" in
         prepare_takeover
         do_takeover
         ;;
+
+    ArtifactRollback)
+        if [ -e "$WORKDIR/too-late-to-roll-back" ]; then
+            exit 1
+        fi
+        ;;
+
+    Cleanup)
+        rm -rf /takeover
+        ;;
+
     *)
         :
         ;;
