@@ -100,4 +100,4 @@ set -e -o pipefail
     rm -rf takeover.sh
 )
 
-mender-artifact write module-image -T mender-takeover -f payload/debian.tar.gz -f payload/takeover.sh.tar
+mender-artifact write module-image -n dual-rootfs-install -t beaglebone -T mender-takeover -f payload/debian.tar.gz -f payload/takeover.sh.tar.gz

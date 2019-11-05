@@ -5,12 +5,15 @@ set -e
 WORKDIR="$2"
 
 prepare_takeover() {
+    umount -l /takeover || true
+    rm -rf /takeover
+
     mkdir -p /takeover
     mount tmpfs /takeover -t tmpfs
     cd /takeover
 
-    tar xzf $WORKDIR/debian.tar.gz
-    tar xzf $WORKDIR/takeover.sh.tar.gz
+    tar xzf $WORKDIR/files/debian.tar.gz
+    tar xzf $WORKDIR/files/takeover.sh.tar.gz
 }
 
 do_takeover() {
@@ -23,6 +26,10 @@ do_takeover() {
 }
 
 case "$1" in
+    SupportsRollback)
+        echo "Yes"
+        ;;
+
     ArtifactInstall)
         prepare_takeover
         ;;
@@ -35,18 +42,27 @@ case "$1" in
         # We need to do most of the work in ArtifactReboot, because it is the
         # only state where we are allowed to kill the mender daemon, which we
         # need to do.
-        # TODO REMOVE
-        prepare_takeover
         do_takeover
+        # Should never get here
+        echo "Returned from takeover without having taken over the device!"
+        exit 1
         ;;
 
     ArtifactRollback)
-        if [ -e "$WORKDIR/too-late-to-roll-back" ]; then
+        if [ -e /var/lib/mender/mender-takeover-too-late-to-roll-back ]; then
+            exit 1
+        fi
+        ;;
+
+    ArtifactVerifyReboot|ArtifactCommit)
+        if [ ! -e /var/lib/mender/mender-takeover-finished ]; then
+            echo "Did not complete all steps"
             exit 1
         fi
         ;;
 
     Cleanup)
+        umount -l /takeover || true
         rm -rf /takeover
         ;;
 
@@ -55,3 +71,4 @@ case "$1" in
         ;;
 esac
 
+exit 0

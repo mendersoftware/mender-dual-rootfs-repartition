@@ -10,6 +10,8 @@ try_to_recover() {
     if [ $RECOVERABLE = 1 ]; then
         umount $MOUNTED_DEVICE || true
         sync
+        echo "Rebooting in 10 seconds..."
+        sleep 10
         echo b > /proc/sysrq-trigger
     else
         echo "Beyond the point of no return. This device is probably bricked..."
@@ -166,21 +168,27 @@ setup_efi_partition() {
     gunzip -c /boot-part.vfat.gz | dd of=$efi_part
 }
 
-setup_rootfs_and_data_partition() {
+mount_rootfs_and_data_partition() {
     local data_part=${STORAGE_DEVICE}${STORAGE_DEVICE_HAS_P}4
-    mkfs.ext4 $data_part
+    mkfs.ext4 -F $data_part
 
     mkdir -p /new_data
     mount $data_part /new_data -t ext4
 
     mkdir -p /new_root
     mount $MOUNTED_DEVICE /new_root -t ext4
+}
+
+setup_rootfs_and_data_partition() {
+    mkdir -p /new_root/data
 
     if [ -d /new_root/var/lib/mender ]; then
         mv /new_root/var/lib/mender /new_data
     fi
     ln -sf /data/mender /new_root/var/lib/mender
+}
 
+unmount_rootfs_and_data_partition() {
     umount /new_root
     umount /new_data
 }
@@ -190,16 +198,17 @@ gather_old_partition_info
 # conditions.
 kill_everything
 kill_everything
+touch /old_root/var/lib/mender/mender-takeover-too-late-to-roll-back
 unmount_everything
+
+# After this there is no going back.
+RECOVERABLE=0
 
 if [ $OLD_ROOTFS_SIZE_MB -ge $NEW_ROOTFS_SIZE_MB ]; then
     # If the old rootfs partition is bigger than the new one, then we need to
     # resize before creating new partitions.
     resize_old_rootfs_partition
 fi
-
-# After this there is no going back.
-RECOVERABLE=0
 
 recreate_rootfs_partitions
 move_old_rootfs_partition
@@ -215,6 +224,9 @@ setup_efi_partition
 # The dangerous part is over!
 RECOVERABLE=1
 
+mount_rootfs_and_data_partition
 setup_rootfs_and_data_partition
+touch /new_data/mender/mender-takeover-finished
+unmount_rootfs_and_data_partition
 
 # Finished! The trap will reboot for us.
