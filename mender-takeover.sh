@@ -188,6 +188,22 @@ setup_rootfs_and_data_partition() {
     ln -sf /data/mender /new_root/var/lib/mender
 }
 
+setup_kernel() {
+    cd /new_root/boot
+
+    # This logic is not very robust, but works for many common/simple cases:
+    # Pick the vmlinuz kernel with the highest kernel number.
+    local kernel="$(ls vmlinuz* | sort -V | tail -n1)"
+    ln -s "$kernel" zImage
+
+    cd /
+}
+
+adjust_fstab() {
+    local data_part=${STORAGE_DEVICE}${STORAGE_DEVICE_HAS_P}4
+    echo "$data_part /data ext4 errors=remount-ro 0 2" >> /new_root/etc/fstab
+}
+
 unmount_rootfs_and_data_partition() {
     umount /new_root
     umount /new_data
@@ -226,6 +242,8 @@ RECOVERABLE=1
 
 mount_rootfs_and_data_partition
 setup_rootfs_and_data_partition
+setup_kernel
+adjust_fstab
 touch /new_data/mender/mender-takeover-finished
 unmount_rootfs_and_data_partition
 
