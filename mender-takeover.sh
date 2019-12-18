@@ -139,7 +139,14 @@ move_old_rootfs_partition() {
         return
     elif [ $NEW_PART_START -lt $OLD_PART_START ]; then
         # Simple case: Backwards move
+
+        # Progress output
+        while sleep 10; do pkill -USR1 '^dd$'; done &
+        local progress_pid=$!
+
         dd if=$STORAGE_DEVICE of=$STORAGE_DEVICE skip=$OLD_PART_START seek=$NEW_PART_START count=$sector_count
+
+        kill $progress_pid
     else
         # Complex case: Forwards move. Here we need to write in chunks from the
         # back to the front, to avoid writes interfering with later reads.
@@ -147,6 +154,7 @@ move_old_rootfs_partition() {
         local old_sector=$(($OLD_PART_START + $sector_count - $sector_diff))
         local new_sector=$(($NEW_PART_END + 1 - $sector_diff))
         while [ $new_sector -ge $NEW_PART_START ]; do
+            echo "Working back-to-front on sector $new_sector (final sector: $NEW_PART_START)"
             dd if=$STORAGE_DEVICE of=$STORAGE_DEVICE skip=$old_sector seek=$new_sector count=$sector_diff
             local old_new_sector=$new_sector
             new_sector=$(($new_sector - $sector_diff))
