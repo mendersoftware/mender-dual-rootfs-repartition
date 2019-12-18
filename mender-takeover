@@ -4,6 +4,10 @@ set -e
 
 WORKDIR="$2"
 
+if [ -f $WORKDIR/files/env.sh ]; then
+    source $WORKDIR/files/env.sh
+fi
+
 prepare_takeover() {
     umount -l /takeover || true
     rm -rf /takeover
@@ -18,10 +22,23 @@ prepare_takeover() {
 
 do_takeover() {
     cd /takeover
+
+    if [ -z "$DEBUG_TTY" ]; then
+        if tty -s; then
+            DEBUG_TTY="$(tty)"
+        else
+            DEBUG_TTY=/dev/tty1
+        fi
+    fi
+
     if [ -n "$(which systemd-run)" ]; then
-        systemd-run bash -c "cd /takeover && exec ./takeover.sh $(tty)"
+        systemd-run bash -c "cd /takeover && exec ./takeover.sh $DEBUG_TTY"
+
+        # Sleep for some time. 60 seconds should be enough to kill everything,
+        # including this script.
+        sleep 60
     else
-        exec ./takeover.sh
+        exec ./takeover.sh $DEBUG_TTY
     fi
 }
 

@@ -2,6 +2,25 @@
 
 set -e
 
+usage() {
+    cat <<EOF
+$(basename "$0") [arguments] [--] [mender-artifact arguments]
+
+--arm
+	Build for ARM platform
+--x86_64
+	Build for x86-64 platform
+--debug-tty
+	Specify a /dev/tty* device which will be used on the device for
+	debugging output. If this is not specified, one will be selected
+	automatically, usually /dev/tty1
+
+Either --arm or --x86_64 is mandatory.
+
+EOF
+    exit 1
+}
+
 PLATFORM=arm
 
 while [ -n "$1" ]; do
@@ -12,9 +31,17 @@ while [ -n "$1" ]; do
         --x86_64)
             PLATFORM=x86_64
             ;;
+        --debug-tty)
+            shift
+            DEBUG_TTY="$1"
+            ;;
+        --)
+            shift
+            break
+            ;;
         *)
             echo "Unrecognized argument: $1" 1>&2
-            exit 1
+            usage
             ;;
     esac
     shift
@@ -100,4 +127,20 @@ set -e -o pipefail
     rm -rf takeover.sh
 )
 
-mender-artifact write module-image -n dual-rootfs-install -t beaglebone -T mender-takeover -f payload/debian.tar.gz -f payload/takeover.sh.tar.gz
+if [ -n "$DEBUG_TTY" ]; then
+    echo "DEBUG_TTY=\"$DEBUG_TTY\"" > env.sh
+    METADATA_ARGS="-f env.sh"
+else
+    METADATA_ARGS=
+fi
+
+mender-artifact write module-image \
+    -n dual-rootfs-install \
+    -t beaglebone \
+    -T mender-takeover \
+    $METADATA_ARGS \
+    -f payload/debian.tar.gz \
+    -f payload/takeover.sh.tar.gz \
+    "$@"
+
+rm -f env.sh
