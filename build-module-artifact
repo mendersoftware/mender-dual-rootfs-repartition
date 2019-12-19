@@ -4,4 +4,4 @@ if [ "$1" = "--" ]; then
     shift
 fi
 
-single-file-artifact-gen -d /usr/share/mender/modules/v3 -n mender-takeover-module -t beaglebone mender-takeover "$@"
+single-file-artifact-gen -d /usr/share/mender/modules/v3 -n dual-rootfs-repartition-module -t beaglebone src/dual-rootfs-repartition "$@"

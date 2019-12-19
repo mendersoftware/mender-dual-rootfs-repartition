@@ -222,7 +222,7 @@ gather_old_partition_info
 # conditions.
 kill_everything
 kill_everything
-touch /old_root/var/lib/mender/mender-takeover-too-late-to-roll-back
+touch /old_root/var/lib/mender/dual-rootfs-repartition-too-late-to-roll-back
 unmount_everything
 
 # After this there is no going back.
@@ -252,7 +252,7 @@ mount_rootfs_and_data_partition
 setup_rootfs_and_data_partition
 setup_kernel
 adjust_fstab
-touch /new_data/mender/mender-takeover-finished
+touch /new_data/mender/dual-rootfs-repartition-finished
 unmount_rootfs_and_data_partition
 
 # Finished! The trap will reboot for us.

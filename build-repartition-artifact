@@ -56,9 +56,9 @@ set -e -o pipefail
     if [ $PLATFORM = arm ]; then
         rm -rf debian-tmp
         mkdir -p debian-tmp
-        docker create --name mender-takeover-tmp arm32v7/debian
-        docker cp -a mender-takeover-tmp:/ debian-tmp/
-        docker rm mender-takeover-tmp
+        docker create --name mender-dual-rootfs-repartition-tmp arm32v7/debian
+        docker cp -a mender-dual-rootfs-repartition-tmp:/ debian-tmp/
+        docker rm mender-dual-rootfs-repartition-tmp
         ( cd debian-tmp && tar --owner=root --group=root -czf ../debian-arm.tar.gz . )
         rm -rf debian-tmp
 
@@ -66,9 +66,9 @@ set -e -o pipefail
     else
         rm -rf debian-tmp
         mkdir -p debian-tmp
-        docker create --name mender-takeover-tmp debian
-        docker cp -a mender-takeover-tmp:/ debian-tmp/
-        docker rm mender-takeover-tmp
+        docker create --name mender-dual-rootfs-repartition-tmp debian
+        docker cp -a mender-dual-rootfs-repartition-tmp:/ debian-tmp/
+        docker rm mender-dual-rootfs-repartition-tmp
         ( cd debian-tmp && tar --owner=root --group=root -czf ../debian-x86_64.tar.gz . )
         rm -rf debian-tmp
 
@@ -118,8 +118,8 @@ set -e -o pipefail
         for patch in ../../patches/*.patch; do
             patch -p1 --batch --no-backup-if-mismatch < $patch
         done
-        cp ../../mender-takeover.sh .
-        echo 'exec /bin/bash /mender-takeover.sh' >> takeover.sh
+        cp ../../src/dual-rootfs-repartition.sh .
+        echo 'exec /bin/bash /dual-rootfs-repartition.sh' >> takeover.sh
 
         tar --owner=root --group=root -czf ../takeover.sh.tar.gz .
     )
@@ -135,9 +135,9 @@ else
 fi
 
 mender-artifact write module-image \
-    -n dual-rootfs-install \
+    -n dual-rootfs-repartition \
     -t beaglebone \
-    -T mender-takeover \
+    -T dual-rootfs-repartition \
     $METADATA_ARGS \
     -f payload/debian.tar.gz \
     -f payload/takeover.sh.tar.gz \

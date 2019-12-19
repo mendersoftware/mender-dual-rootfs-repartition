@@ -66,13 +66,13 @@ case "$1" in
         ;;
 
     ArtifactRollback)
-        if [ -e /var/lib/mender/mender-takeover-too-late-to-roll-back ]; then
+        if [ -e /var/lib/mender/dual-rootfs-repartition-too-late-to-roll-back ]; then
             exit 1
         fi
         ;;
 
     ArtifactVerifyReboot|ArtifactCommit)
-        if [ ! -e /var/lib/mender/mender-takeover-finished ]; then
+        if [ ! -e /var/lib/mender/dual-rootfs-repartition-finished ]; then
             echo "Did not complete all steps"
             exit 1
         fi
