@@ -49,6 +49,18 @@ done
 
 set -e -o pipefail
 
+cp src/mender_grubenv_defines grub-mender-grubenv
+(
+    cd grub-mender-grubenv
+    make
+
+    rm -rf tmp
+    mkdir -p tmp
+    make DESTDIR=tmp BOOT_DIR=/ install-boot-files
+    ( cd tmp && tar czf ../grub-mender-grubenv.tar.gz . )
+    rm -rf tmp
+)
+
 (
     mkdir -p downloads
     cd downloads
@@ -63,6 +75,7 @@ set -e -o pipefail
         rm -rf debian-tmp
 
         curl -z busybox-arm -o busybox-arm https://www.busybox.net/downloads/binaries/1.26.2-defconfig-multiarch/busybox-armv6l
+        curl -z grub-efi-bootarm.efi -o grub-efi-bootarm.efi https://d1b0l86ne08fsf.cloudfront.net/mender-convert/grub-efi/arm/grub-efi-bootarm.efi
     else
         rm -rf debian-tmp
         mkdir -p debian-tmp
@@ -73,6 +86,7 @@ set -e -o pipefail
         rm -rf debian-tmp
 
         curl -z busybox-x86_64 -o busybox-x86_64 https://www.busybox.net/downloads/binaries/1.26.2-defconfig-multiarch/busybox-x86_64
+        curl -z grub-efi-bootx64.efi -o grub-efi-bootx64.efi https://d1b0l86ne08fsf.cloudfront.net/mender-convert/grub-efi/x86-64/grub-efi-bootx64.efi
     fi
 
     chmod ugo+x busybox-*
@@ -103,7 +117,21 @@ set -e -o pipefail
     mkdir -p tmp
     (
         cd tmp
-        tar xzf ../../downloads/grub-efi-$PLATFORM.tar.gz
+        mkdir -p EFI/BOOT
+        case "$PLATFORM" in
+            arm)
+                cp ../../downloads/grub-efi-bootarm.efi EFI/BOOT/bootarm.efi
+                ;;
+            x86_64)
+                cp ../../downloads/grub-efi-bootx64.efi EFI/BOOT/bootx64.efi
+                ;;
+            *)
+                echo "Unknown platform"
+                exit 1
+                ;;
+        esac
+        tar xzf ../../grub-mender-grubenv/grub-mender-grubenv.tar.gz
+        rm -f ../../grub-mender-grubenv/grub-mender-grubenv.tar.gz
     )
     mcopy -i boot-part.vfat -s tmp/* ::/
     rm -rf tmp
