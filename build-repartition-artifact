@@ -144,3 +144,5 @@ mender-artifact write module-image \
     "$@"
 
 rm -f env.sh
+
+echo "Succeeded!"
