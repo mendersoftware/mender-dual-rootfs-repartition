@@ -59,6 +59,12 @@ cp src/mender_grubenv_defines grub-mender-grubenv
     make DESTDIR=tmp BOOT_DIR=/ install-boot-files
     ( cd tmp && tar czf ../grub-mender-grubenv.tar.gz . )
     rm -rf tmp
+
+    rm -rf tmp
+    mkdir -p tmp
+    make DESTDIR=tmp install-tools
+    ( cd tmp && tar czf ../grub-mender-grubenv-tools.tar.gz . )
+    rm -rf tmp
 )
 
 (
@@ -147,6 +153,7 @@ cp src/mender_grubenv_defines grub-mender-grubenv
             patch -p1 --batch --no-backup-if-mismatch < $patch
         done
         cp ../../src/dual-rootfs-repartition.sh .
+        mv ../../grub-mender-grubenv/grub-mender-grubenv-tools.tar.gz .
         echo 'exec /bin/bash /dual-rootfs-repartition.sh' >> takeover.sh
 
         tar --owner=root --group=root -czf ../takeover.sh.tar.gz .

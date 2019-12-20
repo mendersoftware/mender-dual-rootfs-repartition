@@ -214,6 +214,10 @@ setup_rootfs_and_data_partition() {
         mv /new_root/var/lib/mender /new_data
     fi
     ln -sf /data/mender /new_root/var/lib/mender
+
+    cd /new_root
+    tar xzf /grub-mender-grubenv-tools.tar.gz
+    cd /
 }
 
 setup_kernel() {

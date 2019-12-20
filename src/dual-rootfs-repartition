@@ -15,6 +15,16 @@ load_modules() {
     /sbin/modprobe nls_cp437 || true
 }
 
+install_packages() {
+    apt update
+
+    # The U-Boot tools conflict with the tools from grub-mender-grubenv.
+    env DEBIAN_FRONTEND=noninteractive apt autoremove -yy u-boot-tools
+
+    # grub-common is needed to get grub-editenv.
+    env DEBIAN_FRONTEND=noninteractive apt install -yy grub-common
+}
+
 prepare_takeover() {
     umount -l /takeover || true
     rm -rf /takeover
@@ -57,6 +67,7 @@ case "$1" in
     ArtifactInstall)
         set -x
         load_modules
+        install_packages
         prepare_takeover
         ;;
 
