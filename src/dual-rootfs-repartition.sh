@@ -174,6 +174,26 @@ setup_efi_partition() {
     local efi_part=${STORAGE_DEVICE}${STORAGE_DEVICE_HAS_P}1
 
     gunzip -c /boot-part.vfat.gz | dd of=$efi_part
+
+    mkdir -p /new_root/boot/efi
+    mount $efi_part /new_root/boot/efi
+
+    # Copy dtb directory to the boot partition for use by the bootloader.
+    if [ -d /new_root/boot/dtbs ]; then
+        if ls -d /new_root/boot/dtbs/*.dtb > /dev/null; then
+            cp -r /new_root/boot/dtbs /new_root/boot/efi/dtb
+        else
+            # Copy latest dtb directory.
+            for candidate in $(ls -d /new_root/boot/dtbs/* | sort -V -r); do
+                if [ -d $candidate ]; then
+                    cp -r $candidate /new_root/boot/efi/dtb
+                    break
+                fi
+            done
+        fi
+    fi
+
+    umount /new_root/boot/efi
 }
 
 mount_rootfs_and_data_partition() {
@@ -208,7 +228,10 @@ setup_kernel() {
 }
 
 adjust_fstab() {
+    local efi_part=${STORAGE_DEVICE}${STORAGE_DEVICE_HAS_P}1
     local data_part=${STORAGE_DEVICE}${STORAGE_DEVICE_HAS_P}4
+
+    echo "$efi_part /boot/efi vfat defaults 0 2" >> /new_root/etc/fstab
     echo "$data_part /data ext4 errors=remount-ro 0 2" >> /new_root/etc/fstab
 }
 
@@ -243,12 +266,12 @@ if [ $OLD_ROOTFS_SIZE_MB -lt $NEW_ROOTFS_SIZE_MB ]; then
     resize_old_rootfs_partition
 fi
 
+mount_rootfs_and_data_partition
 setup_efi_partition
 
 # The dangerous part is over!
 RECOVERABLE=1
 
-mount_rootfs_and_data_partition
 setup_rootfs_and_data_partition
 setup_kernel
 adjust_fstab

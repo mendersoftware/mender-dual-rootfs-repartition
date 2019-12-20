@@ -8,6 +8,13 @@ if [ -f $WORKDIR/files/env.sh ]; then
     source $WORKDIR/files/env.sh
 fi
 
+load_modules() {
+    # This is needed for the VFAT partition we will mount later, and we can't
+    # load modules after we have killed the original filesystem.
+    /sbin/modprobe nls_ascii || true
+    /sbin/modprobe nls_cp437 || true
+}
+
 prepare_takeover() {
     umount -l /takeover || true
     rm -rf /takeover
@@ -48,6 +55,8 @@ case "$1" in
         ;;
 
     ArtifactInstall)
+        set -x
+        load_modules
         prepare_takeover
         ;;
 
@@ -56,6 +65,7 @@ case "$1" in
         ;;
 
     ArtifactReboot)
+        set -x
         # We need to do most of the work in ArtifactReboot, because it is the
         # only state where we are allowed to kill the mender daemon, which we
         # need to do.
